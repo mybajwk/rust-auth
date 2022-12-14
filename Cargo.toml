@@ -16,7 +16,7 @@ sqlx = { version = "0.6.2", features = ["runtime-async-std-native-tls", "postgre
 
 # DEPENDENCIES SPECIFIC TO AUTH
 actix-web-httpauth = "0.8.0"
-argonautica = "0.2.0"
+pwhash = "1"
 hmac = "0.12.1"
 jwt = "0.16.0"
 sha2 = "0.10.6"

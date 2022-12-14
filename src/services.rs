@@ -5,10 +5,11 @@ use actix_web::{
     HttpResponse, Responder,
 };
 use actix_web_httpauth::extractors::basic::BasicAuth;
-use argonautica::{Hasher, Verifier};
+// use argonautica::{Hasher, Verifier};
 use chrono::NaiveDateTime;
 use hmac::{Hmac, Mac};
 use jwt::SignWithKey;
+use pwhash::{bcrypt, unix};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use sqlx::{self, FromRow};
@@ -51,13 +52,14 @@ struct Article {
 async fn create_user(state: Data<AppState>, body: Json<CreateUserBody>) -> impl Responder {
     let user: CreateUserBody = body.into_inner();
 
-    let hash_secret = std::env::var("HASH_SECRET").expect("HASH_SECRET must be set!");
-    let mut hasher = Hasher::default();
-    let hash = hasher
-        .with_password(user.password)
-        .with_secret_key(hash_secret)
-        .hash()
-        .unwrap();
+    // let hash_secret = std::env::var("HASH_SECRET").expect("HASH_SECRET must be set!");
+    // let mut hasher = Hasher::default();
+    // let hash = hasher
+    //     .with_password(user.password)
+    //     .with_secret_key(hash_secret)
+    //     .hash()
+    //     .unwrap();
+    let hash = bcrypt::hash(user.password).unwrap();
 
     match sqlx::query_as::<_, UserNoPassword>(
         "INSERT INTO users (username, password)
@@ -98,13 +100,14 @@ async fn basic_auth(state: Data<AppState>, credentials: BasicAuth) -> impl Respo
                 Ok(user) => {
                     let hash_secret =
                         std::env::var("HASH_SECRET").expect("HASH_SECRET must be set!");
-                    let mut verifier = Verifier::default();
-                    let is_valid = verifier
-                        .with_hash(user.password)
-                        .with_password(pass)
-                        .with_secret_key(hash_secret)
-                        .verify()
-                        .unwrap();
+                    // let mut verifier = Verifier::default();
+                    // let is_valid = verifier
+                    //     .with_hash(user.password)
+                    //     .with_password(pass)
+                    //     .with_secret_key(hash_secret)
+                    //     .verify()
+                    //     .unwrap();
+                    let is_valid = unix::verify(pass, &user.password);
 
                     if is_valid {
                         let claims = TokenClaims { id: user.id };
@@ -133,6 +136,7 @@ async fn create_article(
             match sqlx::query_as::<_, Article>(
                 "INSERT INTO articles (title, content, published_by)
                 VALUES ($1, $2, $3)
+
                 RETURNING id, title, content, published_by, published_on",
             )
             .bind(article.title)
